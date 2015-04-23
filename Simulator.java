@@ -22,13 +22,13 @@ public class Simulator {
 	int b1Index = 0;
 	int b2Index = 0;
 	int b3Index = 0;
-	String Format;
 	String rs;
 	String rt;
 	String rd;
 	String shamt = "00000";
-
-	String Idex = "";
+	String Format;
+	String Idex;
+	String Exmem;
 
 	boolean r = true;
 	int startingAddress;
@@ -97,13 +97,14 @@ public class Simulator {
 		}
 		String[] b = a[1].split(",");
 		b1Index = indexOf(b[0]);
-		rd = binaryValues[b1Index];
 		b2Index = indexOf(b[1]);
+		b3Index = indexOf(b[2]);
+		rd = binaryValues[b1Index];
 		rs = binaryValues[b2Index];
+		rt = binaryValues[b3Index];
+
 		if (a[0].equals("add")) {
-			b3Index = indexOf(b[2]);
-			rt = binaryValues[b3Index];
-			fn = "100000";
+			fn = "000000";
 			op = "000000";
 			Format = op + rs + rt + rd + shamt + fn;
 		}
@@ -111,13 +112,11 @@ public class Simulator {
 		else if (a[0].equals("addi")) {
 			r = false;
 			op = "001000";
-			immediate = Binary(Integer.parseInt(b[2]), "", 16);
+			immediate = Binary(Integer.parseInt(rt), "", 16);
 			Format = op + rs + rd + immediate;
 
 		}
 		if (a[0].equals("sub")) {
-			b3Index = indexOf(b[2]);
-			rt = binaryValues[b3Index];
 			fn = "100010";
 			op = "000000";
 			Format = op + rs + rt + rd + shamt + fn;
@@ -210,7 +209,7 @@ public class Simulator {
 			op = "000100";
 			int address = getBranchAddress(b[2]);
 			immediate = Binary(address - (pc + 1), "", 16);
-			Format = op + rd + rs + immediate;
+			Format = op + rs + rt + immediate;
 
 		} else if (a[0].equals("bne")) {
 			r = false;
@@ -237,15 +236,11 @@ public class Simulator {
 			rs = "00000000000000000000";
 			Format = op + rd + rs + fn;
 		} else if (a[0].equals("slt")) {
-			b3Index = indexOf(b[2]);
-			rt = binaryValues[b3Index];
 			fn = "101010";
 			op = "000000";
 
 			Format = op + rs + rt + rd + shamt + fn;
 		} else if (a[0].equals("sltu")) {
-			b3Index = indexOf(b[2]);
-			rt = binaryValues[b3Index];
 			fn = "101001";
 			op = "000000";
 			Format = op + rs + rt + rd + shamt + fn;
@@ -301,7 +296,7 @@ public class Simulator {
 				indexrt = indexOf(rtR);
 				valuert = values[indexrt];
 			}
-			Idex = opR + "," + valuers + "," + valuerd + "," + valuert + ","
+			Idex = opR + "," + valuers + "," + valuert + "," + indexrd + ","
 					+ Shift + "," + fnR;
 		} else {
 			String opI;
@@ -335,7 +330,7 @@ public class Simulator {
 				indexrs = indexOf(rsI);
 				valuers = values[indexrs];
 			}
-			Idex = opI + "," + valuers + "," + valuert + "," + offset;
+			Idex = opI + "," + valuers + "," + indexrt + "," + offset;
 
 		}
 
@@ -343,10 +338,129 @@ public class Simulator {
 
 	public void Execute(String idex) {
 		if (r) {
+			String[] b = idex.split(",");
+			String op = b[0];
+			String rs = b[1];
+			String rt = b[2];
+			String rd = b[3];
+			String shift = b[4];
+			String fn = b[5];
+			int res = 0;
 
+			if (fn.equals("000000")) {
+				res = Integer.parseInt(rs) + Integer.parseInt(rt);
+			}
+			if (fn.equals("100010")) {
+				res = Integer.parseInt(rs) - Integer.parseInt(rt);
+			}
+
+			if (fn.equals("000000")) {
+				int rtint = Integer.parseInt(rt);
+				res = (int) (rtint * Math.pow(2, Integer.parseInt(shift)));
+
+			}
+			if (fn.equals("000010")) {// srl
+				int rtint = Integer.parseInt(rt);
+				res = (int) (rtint / Math.pow(2, Integer.parseInt(shift)));
+
+			}
+			if (fn.equals("100100")) {// and
+				res = Integer.parseInt(rs) & Integer.parseInt(rt);
+
+			}
+			if (fn.equals("100100")) {// nor
+				int x = Integer.parseInt(rs) | Integer.parseInt(rt);
+				res = ~x;
+
+			}
+			;
+
+			if (fn.equals("101010")) {// slt
+				if (Integer.parseInt(rs) < Integer.parseInt(rt)) {
+					res = 1;
+				} else {
+					res = 0;
+				}
+
+			}
+			if (fn.equals("101010")) {// sltu
+				int x = 0;
+				int y = 0;
+				if (Integer.parseInt(rs) < 0) {
+					x = Integer.parseInt(rs) * (-1);
+				}
+				if (Integer.parseInt(rt) < 0) {
+					y = Integer.parseInt(rt) * (-1);
+				}
+
+				if (x < y) {
+					res = 1;
+				} else {
+					res = 0;
+				}
+
+			}
+			Exmem = res + "," + rd;
+
+		} else {
+			String[] p = idex.split(",");
+			String opI = p[0];
+			String valuers = p[1];
+			String rt = p[2];
+			String offset = p[3];
+			int res = 0;
+			if (op.equals("001000")) {// addi
+				res = Integer.parseInt(rs) + Integer.parseInt(offset);
+			}
+			if (op.equals("100011")) {// lw
+				int newoffset = Integer.parseInt(offset) / 4;
+				res = Integer.parseInt(rs) + newoffset;
+			}
+
+			if (op.equals("100000")) {// lb
+				int newoffset = Integer.parseInt(offset) / 4;
+				res = Integer.parseInt(rs) + newoffset;
+			}
+
+			if (op.equals("100100")) {// lbu
+				int x = 0;
+
+				if (Integer.parseInt(rs) < 0) {
+					x = Integer.parseInt(rs) * (-1);
+				}
+				int newoffset = Integer.parseInt(offset) / 4;
+				res = x + newoffset;
+			}
+
+			if (op.equals("101011")) {// sw
+				int newoffset = Integer.parseInt(offset) / 4;
+				res = Integer.parseInt(rs) + newoffset;
+			}
+
+			if (op.equals("101000")) {// sb
+				int newoffset = Integer.parseInt(offset) / 4;
+				res = Integer.parseInt(rs) + newoffset;
+			}
+			if (op.equals("000100")) {// beq
+				int eq = Integer.parseInt(rs) - Integer.parseInt(rt);
+				int r = decimal(offset) * -1;
+				if (eq == 0) {
+					pc = pc - r;
+				}
+
+			}
+			if (op.equals("000101")) {// bne
+				int eq = Integer.parseInt(rs) - Integer.parseInt(rt);
+				int r = decimal(offset) * -1;
+				if (eq != 0) {
+					pc = pc - r;
+				}
+
+			}
+			Exmem = res + "," + rt;
 		}
 
-	}
+	} 
 
 	public static int decimal(String s) {
 		int res = 0;
@@ -359,17 +473,8 @@ public class Simulator {
 		}
 		return res;
 	}
-	public static String binaryNeg(int number, int size){
-		String s = Integer.toBinaryString(number);
-		String x = s;
-		for(int i = 0; x.length()>size;i++){
-			x = s.substring(i+1, s.length());
-		}
-		return x;
-	}
+
 	public static String Binary(int number, String result, int size) {
-		if(number<0)
-			return binaryNeg(number, size);
 		int rem;
 		if (number <= 1) {
 			String s = number + result;
@@ -386,22 +491,7 @@ public class Simulator {
 	}
 
 	public static void main(String[] args) {
-		ArrayList<String> br = new ArrayList<String>();
-		br.add("L1:add $t0,$t1,$t2");
-		br.add("add $t0,$t1,$t2");
-		br.add("add $t0,$t1,$t2");
-		br.add("add $t0,$t1,$t2");
-		br.add("add $t6t0,$t1,$t2");
-		br.add("beq $t3,$0,L1");
-		Simulator sim = new Simulator(br, new ArrayList<String>(),
-				new ArrayList<String>(), 5);
-		sim.pc = 10;
-		sim.Fetch("beq $t3,$0,L1");
-		if (sim.Format.equals("00010001011000001111111111111010"))
-			System.out.println(true);
-		System.out.println(sim.Format);
-		//System.out.println(Integer.toBinaryString(-6));
-		//System.out.println(Integer.parseInt("-110",2));
+
 	}
 
 }
